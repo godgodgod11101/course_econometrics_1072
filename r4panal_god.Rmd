@@ -1,0 +1,310 @@
+---
+title: "r for panel"
+author: "王正評"
+date: "5/22/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+## 套件
+
+```{r pakages, include=FALSE}
+
+library(dplyr)
+library(stargazer)
+library(ggplot2)
+library(magrittr)
+library(plm)
+
+```
+
+
+## 引入資料
+
+```{r data}
+
+library(readr)
+fatality <- read_csv("https://raw.githubusercontent.com/tpemartin/Econometric-Analysis/master/Part%20II/fatality.csv")
+
+```
+
+```{r}
+
+class(fatality)
+
+```
+
+
+##宣告資料為Panel data frame
+
+```{r panal data frame}
+
+fatality_pdf <- pdata.frame( fatality,c("state", "year") )
+
+# c("individual", "time")
+
+```
+
+```{r}
+
+class(fatality_pdf)
+
+```
+
+
+## 初步資料觀察
+
+```{r plot}
+
+fatality_pdf %>% 
+  ggplot()+
+  geom_point( aes( x=beertax, y=I(mrall*1000) ) )
+
+```
+
+不同州用不同顏色畫離散圖：
+
+1. mapping（aes函式）的color設定
+```{r plot i with different color}
+
+fatality_pdf %>% 
+  ggplot()+
+  geom_point(
+    aes(x=beertax,
+        y=I(mrall*1000),
+        color=state
+        )
+    )
+
+```
+
+2. 非mapping（aes函式）的color設定
+```{r plot with color}
+
+fatality_pdf %>% 
+  ggplot()+
+  geom_point(
+    aes(x=beertax,
+        y=I(mrall*1000)
+        ),
+    color="blue"
+    )
+
+```
+
+3. state的資料為numeric型式（未將fatality轉成panal data）
+```{r wrong plot for i}
+
+fatality %>%
+  ggplot()+
+  geom_point(
+    aes(x=beertax,
+        y=I(mrall*1000),
+        color=state)
+   )
+# R認為state是數值，所以將資料點用漸層色表示
+
+```
+
+4. 宣告state為類別變數
+```{r correct plot for i}
+
+fatality %>% 
+  ggplot()+
+  geom_point(
+    aes(x=beertax,
+        y=I(mrall*1000),
+        color=as.factor(state)
+        )
+    )
+
+# R認為state是類別變數，大小不具意義，所以將資料點用不同顏色表示
+
+```
+
+不同年用不同顏色畫離散圖：
+
+```{r plot t with different color}
+
+fatality_pdf %>% 
+  ggplot()+
+  geom_point(
+    aes(x=beertax,
+        y=I(mrall*1000),
+        color=year
+        )
+  )
+
+```
+
+不同州用不同顏色，不同年用不同形狀畫離散圖：
+
+```{r plot i and t both with diff}
+
+fatality_pdf %>% 
+  ggplot()+
+  geom_point(
+    aes(x=beertax,
+        y=I(mrall*1000),
+        color=state,
+        shape=year
+        )
+  )
+
+```
+
+
+## 組內差異
+
+```{r create demean data}
+
+fatality_pdf %>% 
+  group_by(state) %>%        # 依state分組進行以下程序
+  mutate(
+    mrall_demean=mrall-mean(mrall),
+    beertax_demean=beertax-mean(beertax)
+  ) %>%
+  select(state, mrall_demean, beertax_demean) -> demean_data
+
+# 保留state變數
+
+```
+
+```{r plot point and line}
+
+demean_data %>%
+  ggplot()+
+  geom_point(
+    aes(x=beertax_demean,
+        y=I(mrall_demean*1000),
+        color=state
+        )
+  )+
+  geom_smooth(
+    aes(x=beertax_demean,
+        y=I(mrall_demean*1000)
+        ),
+    method = "lm",
+    se = FALSE
+  )
+
+# method = "lm"：OLS迴歸線；se = FALSE：不要畫出信賴區間
+
+```
+
+demean後只是讓每個州的資料以原點為中心：
+
+1. demean後state 10的散佈圖
+```{r plot state 10 after demean}
+
+demean_data %>%
+  filter(state==10) %>%
+  ggplot()+
+  geom_point(
+    aes(x=beertax_demean,
+        y=I(mrall_demean*1000),
+        color=state
+        ),
+    size=10
+  )
+
+
+```
+
+2. 原來state 10的散佈圖
+```{r plot state 10}
+
+fatality_pdf %>%
+  filter(state==10) %>%
+  ggplot()+
+  geom_point(
+    aes(x=beertax,
+        y=I(mrall*1000),
+        color=state
+        ),
+    size=10
+  )
+
+```
+
+組內差異最小平方法：
+
+```{r within group demean}
+
+lm( mrall_demean~beertax_demean, data = demean_data ) %>%
+  summary()
+
+
+```
+
+LSDV法（beertax的估計效果同組內差異最小平方法）：
+
+```{r LSDV}
+
+lm( mrall~beertax+state, data = fatality_pdf) %>%
+  summary()
+
+# state是類別變數，lm函數直接設好Dummy
+
+```
+
+
+## 使用plm函式作迴歸分析
+
+1. OLS（等同lm函式）
+```{r plm OLS}
+
+plm(data = fatality_pdf, mrall~beertax, model = "pooling") -> pool1
+
+summary(pool1)
+
+
+lm(data = fatality_pdf, mrall~beertax) %>%
+  summary()
+
+```
+
+2. Random Effect
+```{r plm random}
+
+plm(data = fatality_pdf, mrall~beertax, model = "random") -> re1
+
+summary(re1)
+
+```
+
+3. Fixed Effect
+```{r plm fixed}
+
+plm(data = fatality_pdf, mrall~beertax, model = "within", effect = "individual") -> fe1
+
+summary(fe1)
+
+
+plm(data = fatality_pdf, mrall~beertax, model = "within", effect = "twoways") -> fe2
+
+summary(fe2)
+
+```
+
+比較：
+
+```{r stargazer}
+
+library(stargazer)
+
+stargazer(pool1, re1, fe1, fe2,
+          column.labels = c("OLS","RE","FE-i","FE-i and t"),
+          type = "text",
+          align = T
+  
+)
+
+```
+
+
+

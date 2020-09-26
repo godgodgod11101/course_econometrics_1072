@@ -1,0 +1,71 @@
+---
+title: "r for panel"
+author: "王正評"
+date: "5/22/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+## 套件
+
+```{r pakages, include=FALSE}
+
+library(dplyr)
+library(ggplot2)
+library(plm)
+
+```
+
+
+## 引入資料
+
+```{r data}
+
+library(readr)
+fatality <- read_csv("https://raw.githubusercontent.com/tpemartin/Econometric-Analysis/master/Part%20II/fatality.csv")
+
+```
+
+
+## 資料分析流程
+
+1. 確定變數class的正確性
+
+```{r}
+
+fatality %>%
+  mutate(state=as.factor(state),
+         year=as.ordered(year)
+  ) -> fatality_modified
+
+```
+
+2. 作圖
+
+```{r}
+
+fatality_modified %>%
+  ggplot()+
+  geom_point(
+    aes(
+      x=beertax,
+      y=I(mrall*1000),
+      color=state
+    )
+  )
+
+```
+
+3. 資料分析
+
+```{r}
+
+lm(data = fatality_modified, mrall~beertax+state) %>%
+  summary()
+
+```
+

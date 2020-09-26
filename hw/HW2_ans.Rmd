@@ -1,0 +1,477 @@
+---
+title: "作業2"
+output: 
+  html_document: 
+     code_folding: hide
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,message=F,warning=F)
+```
+
+# 1 實證應用
+Execute the following code lines to import fertil2 data frame. 
+```{r}
+library(readr)
+fertil2 <- read_csv("https://raw.githubusercontent.com/tpemartin/github-data/master/fertil2.csv")
+```
+The data includes, for women in Botswana during 1988, information on number of children, years of education, age, and religious and economic status variables.
+
+
+## 1.1
+Estimate the model:
+$$children=\beta_{0}+\beta_{1}educ+\beta_{2}age+\beta_{3}age^{2}+u$$
+by OLS, and interpret the estimates.
+
+*** 
+
+```{r}
+ols1<-lm(children~educ+age+I(age^2),data=fertil2)
+library(lmtest)
+library(sandwich)
+coeftest(ols1,vcov = vcovHC, type="HC1")-> coeftest_ols1
+coeftest_ols1
+```
+
+educ: 教育多一年的女性，其小孩生育數目預估少0.09位。
+
+age: 在資料的年齡範圍內，年紀越大的女性，其小孩生育數越多（見下圖）。
+
+```{r}
+library(dplyr)
+fertil2 %>%
+  summarise(
+    maxage=max(age),
+    minage=min(age),
+  ) %>%
+  {seq(from=.$minage, to=.$maxage, by=0.05)} -> xaxis
+library(broom)
+tidy(ols1) -> ols1est 
+ols1est$estimate -> ols1coef
+names(ols1coef) <- ols1est$term
+yaxis <- xaxis*ols1coef[["age"]]+xaxis^2*ols1coef[["I(age^2)"]]
+plot(x=xaxis,y=yaxis)
+```
+
+
+## 1.2
+The variable frsthalf is a dummy variable equal to one if the woman was born during the first six months of the year. Assuming that frsthalf is uncorrelated with the error term from 1.1, show that frsthalf is a reasonable IV candidate for educ. (Hint: you need to do a regression.)
+
+*** 
+
+> 在進入IV前我們想像為什麼單純比較不同教育年限的婦女生育數並不能反應出教育的效應。這裡，我想原作者定義教育是單純的「學校教育」，所以其他知識來源對生育數的效應影響並不算在裡面。比如說：家裡有電視的婦女比較會接到節育政策的宣導，而家裡有電視的婦女，她自己本身的教育年限也比較高。基於類似理由，一開始的OLS估計會有偏誤問題。
+
+由於題目假設frsthalf與error term無關，所以IV的排除性條件已成立。我們只需去驗證相關性，題目說要做迴歸，所以是指frsthalf與educ要有關連，考慮如下估計程序：
+```{r}
+library(dplyr)
+lm(educ~frsthalf,data=fertil2) %>%
+  coeftest(vcov.=vcovHC,type="HC1") 
+```
+
+frsthalf=1（上半年生）的人比frsthalf=0（下半年生）的人，其子孩數目平均少0.97位且係數值在5%顯著度下顯著，有顯著關連。
+
+> 這裡只是初步描述，還不算強IV驗證。另外，在資料描述階段其實也可以只用圖表說明即可。然而，在關連性分析時，若其中一個變數為類別，一般會進行不同類別的population mean是否相同的檢定——即傳統ANOVA分析；而傳統ANOVA分析又等價於迴歸分析使用類別dummy的估計檢定結果。
+
+## 1.3
+Estimate the model from part 1.1 by using frsthalf as an IV for educ. Compare the estimated effect of education with the OLS estiimate from 1.1.
+
+
+```{r}
+library(AER)
+ivreg(children~educ+age+I(age^2)| frsthalf+age+I(age^2),data=fertil2) -> tsls1
+## 現在coeftest也可以用在ivreg產生的output物件了。
+coeftest(tsls1,vcov.=vcovHC,type="HC1") -> coeftest_tsls1
+```
+
+在OLS估計中，多一年教育的節育效果是「減少0.09個小孩」，使用TSLS後此效果提升到「減少0.171」個小孩（以絕對值來看）。
+
+單純的OLS估計（以絕對值來看）低估了教育節育效果，表示OLS所比較的「高/低教育」群的孩子數目不單純由是教育高/低所造成，其他因素夾帶在「高/低教育」群裡，使得他們的小孩數差距變小了。
+
+邏輯上高教育的小孩數少於低教育的子孩數，所以夾帶其他因素使得差距減少，表示「其他夾帶因素」使得（1）高教育群的小孩數增加，或/且（2）低教育群的小孩數減少。 
+
+> 題目沒問，但研究者會進一步去想是什麼狀況可以產生上面的現象。
+
+```{r, results="asis"}
+stargazer::stargazer(ols1,tsls1,
+                     se=list(
+                       coeftest_ols1[,"Std. Error"], coeftest_tsls1[,"Std. Error"]
+                     ),
+                     type="html")
+```
+
+
+## 1.4
+Add the binary variables electric, tv, and bicycle to the model and assume that these are exogenous. Estimate the equation by OLS and TSLS and compare the estimated coefficients on educ. Interpret the coefficient on tv and explain why television ownership has a negative effect on fertility.
+
+這題題目比較適合反過來想為什麼要加tv這個控制變數。有tv控制考量表示擔心：家裡有沒有電視會影響到婦女生育數，而家裡有沒有電視又和婦女教育年限高低有關。擔心描述的前段：家裡有沒有電視會影響到婦女生育數，即是這題目所要問的。
+
+原則上控制變數估計係數無法做效應詮釋，所以我們簡單猜測其值的正負多少反應了效應狀況。這裡係數為負，表示「有電視」的婦女其生育數會較低。若此「負值」即為「家裡有電視會減少婦女生育數」的因果狀況，這有可能是多數節育政策是透過電視宣導，也有可能是電視節目內容讓婦女思想更解放，更在乎男女平權，因此不會把生育決策全權交給男方決定。
+
+回到我們關心的效應解釋變數**educ**。在OLS估計中，多一年教育的節育效果是「減少0.07個小孩」，使用TSLS後此效果提升到「減少0.164」個小孩（以絕對值來看）。
+
+```{r}
+lm(children~educ+age+I(age^2)+electric+tv+bicycle,data=fertil2)-> ols2
+coeftest(ols2, vcov=vcovHC, type="HC1") -> coeftest_ols2
+ivreg(children~educ+age+I(age^2)+electric+tv+bicycle | frsthalf+age+I(age^2)+electric+tv+bicycle,data=fertil2) -> tsls2
+coeftest(tsls2, vcov=vcovHC, type="HC1") -> coeftest_tsls2
+```
+
+```{r, results="asis"}
+stargazer::stargazer(
+  ols2, tsls2,
+  se=list(
+    coeftest_ols2[,"Std. Error"], coeftest_tsls2[,"Std. Error"]
+  ),
+  type="html"
+)
+```
+
+
+## 1.5 
+Continue from 1.4, conduct Hausman test to see if OLS is valid for the study under a 5 percent test size.
+
+***
+
+```{r, results='asis'}
+summary(tsls2,vcov = vcovHC, diagnostics = TRUE, df=Inf, type="HC1") -> summary_tsls2
+stargazer::stargazer(summary_tsls2$diagnostics,type="html")
+```
+
+Hausman檢定是
+$$
+\begin{array}{ll}
+H0: & \mbox{OLS與TSLS都可以用}\\
+H1: & \mbox{只有TSLS可以用}
+\end{array}
+$$
+因此若要問可不可以用OLS，就表示要不拒絕H0。表中Wu-Hausman的檢定值之p-value=0.165 > 0.05； 故不拒絕H0，表示此題其實是可以用OLS的。
+
+## 1.6
+Can we test whether frsthalf is indeed exogenous for being an IV? why or why not?
+
+***
+要檢定IV是否符合外生性，要看Sargan檢定。這裡沒有值是因為額外找的工具變數只有frsthalf一個，而效應解釋變數個數也是educ一個——為足夠認定(exactly-identified)狀況；因此無法檢定外生性。
+
+## 1.7
+If we add one more IV catholic, can we test IV exogeneity? If yes, what is the test result under a 5 percent test size.
+
+***
+
+多加一個額外找的IV可產生過度認定（overidentified）狀況，故可進行外生性檢定（Sargan檢定）。重新估計後，得到下表：
+
+```{r, results="asis"}
+ivreg(children~educ+age+I(age^2)+electric+tv+bicycle | frsthalf+catholic+age+I(age^2)+electric+tv+bicycle,data=fertil2) -> tsls3
+summary(tsls3,vcov = vcovHC, diagnostics = TRUE, df=Inf, type="HC1") -> summary_tsls3
+stargazer::stargazer(summary_tsls3$diagnostics,type="html")
+```
+
+<br>
+
+> 這裡的summary改成和ols coeftest使用HC1型的異質變異穩健標準誤（Heteroscedasticity-Robust Standard Error）一致的計算法，目的只是為了統一用法。課本上放的是HC0型的一種，但也是穩健標準誤——兩者「均是」迴歸估計式$\hat{\beta}$抽樣分配標準差（即$\sqrt{V(\hat{\beta})}$ ）的一致性估計。應用上，R提供了HC0-HC5共5種選擇，由於都是robust所以選那一個不重要，但報表上最好統一用同一型。
+
+Sargan檢定：
+$$
+\begin{array}{ll}
+H0: & \mbox{額外找的工具變數群均「符合」外生性}\\
+H1: & \mbox{H0不成立}
+\end{array}
+$$
+在5%的顯著度下，其檢定量之p-value=0.229>0.05，故不拒絕H0——即工具變數外生性條件成立。
+
+## 1.8
+Are frsthalf and catholic weak IVs?
+
+***
+Week instrument檢定：
+$$
+\begin{array}{ll}
+H0: & \mbox{工具變數群與效應變數關連「太弱」}\\
+H1: & \mbox{工具變數群與效應變數關連「夠強」}
+\end{array}
+$$
+
+
+1.7題的表中的Week instruments檢定量值>10，故接受H1——工具變數群與效應解釋變數的關連性夠強。
+
+# 2 複迴歸與工具變數
+
+一開始的效應模型：
+$$Y=Y_{-p}+\beta^* P$$
+假設州所得$rincome$會影響立足點，即影響價格以外的需求量之決定。
+
+考慮兩個面向的訊息拆解：
+
+  A. 針對立足點：$Y_{-p}=\tilde{\epsilon}+E(Y_{-p}|rincome)$，為方便討論假設$E(Y_{-p}|rincome)=2+3 rincome$; 
+  
+  B. 針對效應（產生）變數：$P=\tilde{v}+P_z$其中$P_z=E(P|z)$。
+
+由於是訊息拆解，所以
+
+> A中的$\tilde{\epsilon}$與$rincome$無關。
+
+> B中的$\tilde{v}$與$z$無關。
+
+## 2.1 立足點情境A.1
+
+  【A.1】P與立足點中的兩部份，$\tilde{\epsilon}$及$rincome$，皆無關。
+
+說明此時$E(Y|P)$中P的係數即為$\beta^*$.
+
+***
+
+$$
+\begin{array}{lcl}
+E(Y|P)&=& E(Y_{-p}+\beta^* P|P)\\
+&=& E(Y_{-p}|P)+\beta^*P
+\end{array}
+$$
+Focusing on $E(Y_{-p}|P)=E$ where $Y_{p}=\tilde{\epsilon}+2+3rincome$,
+$$
+\begin{array}{lcl}
+E(Y_{-p}|P)&=& E(\tilde{\epsilon}|P)+2+3rincome\\
+&=& 2+3E(rincome|P) \mbox{ since $\tilde{\epsilon}\perp P$}\\
+&=& 2+3E(rincome) \mbox{ since $rincome \perp P$}\\
+\end{array}
+$$
+Note that $E(rincome)$ is the population mean of rincome, which is a constant. Hence
+$$E(Y|P)=2+3E(rincome) + \beta^*P.$$
+The coefficient attached to $P$ is $\beta^*$ which is accurate. 
+
+> 控制變數（rincome）若與效應解釋變數（P）無關，可以不在迴歸模型控制它。
+
+## 2.2 立足點情境A.2
+
+此情境包含兩部份：
+
+  【A.2.1】 P與$\tilde{\epsilon}$無關；但
+
+  【A.2.2】 P與$rincome$有關——令$E(rincome|P)=0.5+P$。
+
+即P與$Y_{-p}$有關連，但此關連性來自於【A.2.2】中P與rincome的關連——即$E(rincome|P)$部份。
+
+說明此時$E(Y|P)$中P的係數「不」為$\beta^*$，但$E(Y|P,rincome)$中P的係數為$\beta^*$。
+
+***
+
+
+$$
+\begin{array}{lcl}
+E(Y|P)&=& E(Y_{-p}+\beta^* P|P)\\
+&=& E(Y_{-p}|P)+\beta^*P
+\end{array}
+$$
+Focusing on $E(Y_{-p}|P)=E$ where $Y_{p}=\tilde{\epsilon}+2+3rincome$,
+$$
+\begin{array}{lcl}
+E(Y_{-p}|P)&=& E(\tilde{\epsilon}|P)+2+3rincome\\
+&=& 2+3E(rincome|P) \mbox{ since $\tilde{\epsilon}\perp P$}\\
+&=& 2+3(0.5+P) \mbox{ since $E(rincome |P)=0.5+P$}\\
+\end{array}
+$$
+Hence
+$$E(Y|P)=3.5 + (\beta^*+3)P.$$
+The coefficient attached to $P$ is $\beta^*+3$ which is inaccurate. 
+
+> 控制變數（rincome）若與效應解釋變數（P）有關，必需在迴歸模型控制它。
+
+## 2.3 立足點情境A.3
+
+考慮以下兩個情境條件：
+
+  【A.3.1】 P與$\tilde{\epsilon}$有關；且
+
+  【A.3.2】 P與$rincome$有關——令$E(rincome|P)=0.5+P$。
+
+即P與$Y_{-p}$有關連：此關連性可來自於【A.2.2】中P與rincome的關連，也可來自於它與「非價格、非所得」引起的銷量之關連（即與$\tilde{\epsilon}$相關部份）
+
+若$E(\tilde{\epsilon}|P)=0.5+2P$，說明不論使用$E(Y|P)$或$E(Y|P,rincome)$，其P之係數都不會是$\beta^*$
+
+***
+
+$$
+\begin{array}{lcl}
+E(Y|P,rincome)&=& E(Y_{-p}+\beta^* P|P,rincome)\\
+&=& E(Y_{-p}|P,rincome)+\beta^*P
+\end{array}
+$$
+Focusing on $E(Y_{-p}|P)=E$ where $Y_{p}=\tilde{\epsilon}+2+3rincome$,
+$$
+\begin{array}{lcl}
+E(Y_{-p}|P,rincome)&=& E(\tilde{\epsilon}|P,rincome)+2+3rincome\\
+&=& E(\tilde{\epsilon}|P)+2+3rincome \mbox{ since $\tilde{\epsilon}\perp rincome$ }\\
+&=& (0.5+2P)+2+3rincome \mbox{ since $E(\tilde{\epsilon}|P)=0.5+2P$ }\\
+&=& 2.5+2P+3rincome
+\end{array}
+$$
+Hence
+$$E(Y|P,rincome)=2.5+3rincome + (\beta^*+2)P.$$
+The coefficient attached to $P$ is $\beta^*+2$ which is inaccurate. 
+
+> 加了控制變數（rincome）後，若效應解釋變數（P）跟殘餘的立足點還是有關連，效應係數的估計還是有偏誤。
+
+Given $E(Y|P,rincome)$, law of iterative expectation warrants that
+$$E(E(Y|P,rincome)|P)=E(Y|P),$$
+which is equal to 
+$$2.5+3E(rincome|P)+(\beta^*+2)P.$$
+With $E(rincome|P)=0.5+P, it is equal to 
+$$4+(\beta^*+3)P.$$
+The coefficient of P is still not $\beta^*$.
+
+## 2.4 立足點情境A.3+效應情境B.1：TSLS
+
+考慮以下三個情境條件：
+
+  【A.3.1】 P與$\tilde{\epsilon}$有關；且
+
+  【A.3.2】 P與$rincome$有關——令$E(rincome|P)=0.5+P$。
+  
+  【B.1】$P_z$與$\tilde{\epsilon}$無關
+  
+即P與$Y_{-p}$有關連：此關連性可來自於【A.2.2】中P與rincome的關連，也可來自於它與「非價格、非所得」引起的銷量之關連（即與$\tilde{\epsilon}$相關部份）——以上是【A.3.1-3.2】的結果；但我們找到工具變數z，可產生【B.1】情境。
+
+若$E(\tilde{\epsilon}|P)=0.5+2P$，說明使用$E(Y|P_z,rincome)$其中$P_z$的係數會是$\beta^*$
+
+***
+
+$$
+\begin{array}{lcl}
+E(Y|P_z,rincome)&=& E(Y_{-p}+\beta^* P|P_z,rincome)\\
+&=& E(\tilde{\epsilon}+E(Y_{-p}|rincome)+\beta^* P|P_z,rincome)\\
+&=& E(\tilde{\epsilon}+E(Y_{-p}|rincome)+\beta^*(\tilde{v}+P_z)|P_z,rincome)\\
+&=& E(\tilde{\epsilon}+2+3rincome+\beta^*(\tilde{v}+P_z)|P_z,rincome)\\
+&=& E(\tilde{\epsilon}+\beta^*\tilde{v}|P_z,rincome)+2+3rincome+\beta^*P_z
+\end{array}
+$$
+Focusing on $E(\tilde{\epsilon}+\beta^*\tilde{v}|P_z,rincome)$ where ,
+$$
+\begin{array}{lcl}
+E(\tilde{\epsilon}+\beta^*\tilde{v}|P_z,rincome)&=& E(\tilde{\epsilon}|P_z,rincome)+E(\beta^*\tilde{v}|P_z,rincome)\\
+&=& E(\tilde{\epsilon}|P_z)+E(\beta^*\tilde{v}|P_z,rincome) \mbox{ since}\\
+& &\tilde{\epsilon}\perp rincome.\\
+&=& E(\tilde{\epsilon}|P_z)+E(\beta^*\tilde{v}|rincome) \mbox{ since}\\
+& & \tilde{v}\perp z\mbox{, }\tilde{v}\perp P_z.\\
+&=& E(\tilde{\epsilon})+E(\beta^*\tilde{v}|rincome) \mbox{ since}\\
+& & z\mbox{ is an IV that }z\perp \tilde{v}.\\
+\end{array}
+$$
+Hence
+$$
+\begin{array}{lcl}
+E(Y|P_z,rincome)&=& E(\tilde{\epsilon}+\beta^*\tilde{v}|P_z,rincome)+2+3rincome+\beta^*P_z\\
+&=& E(\tilde{\epsilon})+E(\beta^*\tilde{v}|rincome)+2+3rincome+\beta^*P, 
+\end{array}
+$$
+where the coefficient attached to $P$ is $\beta^*$ which is accurate. 
+
+> 去除控制變數訊息後的立足點（$\tilde{\epsilon}$），若還是會和效應解釋變數（P）有關，可以進一步去找與$\tilde{\epsilon}$「無」關連的工具變數（z）進行TSLS估計得到一致性估計結果。
+
+## 2.5 立足點情境A.3+效應情境B.1：複迴歸
+
+承接上題情境，即
+
+  【A.3.1】 P與$\tilde{\epsilon}$有關；且
+
+  【A.3.2】 P與$rincome$有關——令$E(rincome|P)=0.5+P$。
+  
+  【B.1】$P_z$與$\tilde{\epsilon}$無關
+  
+說明使用$E(Y|P,rincome,z)$其中$P$的係
+數不會是$\beta^*$.
+
+*** 
+
+$$
+\begin{array}{lcl}
+E(Y|P,rincome,z)&=& E(Y_{-p}+\beta^* P|P,rincome,z)\\
+&=& E(Y_{-p}|P,rincome,z)+\beta^* P\\
+&=& E(\tilde{\epsilon}+E(Y_{-p}|rincome)|P,rincome,z)+\beta^* P\\
+&=& E(\tilde{\epsilon}+2+3rincome|P,rincome,z)+\beta^*P\\
+&=& E(\tilde{\epsilon}|P,rincome,z)+2+3rincome+\beta^*P\\
+&=& E(\tilde{\epsilon}|P,z)+2+3rincome+\beta^*P\mbox{ since}\\
+& & rincome \perp \tilde{\epsilon} \mbox{ 訊息拆解特質.}\\
+&=& E(\tilde{\epsilon}|P)+2+3rincome+\beta^*P\mbox{ since}\\
+& & z \perp \tilde{\epsilon} \mbox{ 工具變數排除條件.}\\
+\end{array}
+$$
+Focusing on $E(\tilde{\epsilon}|P)$. Due to【A.3.1】,  $E(\tilde{\epsilon}|P)$ will depend on P. Assuming the dependence is a linear form such that $E(\tilde{\epsilon}|P)=a+bP$, then
+$$E(Y|P,rincome,z)=(2+a)+3rincome+(\beta^*+b)P,$$
+
+where the coefficient attached to $P$ is $\beta^*+b$ which is inaccurate. 
+
+> 工具變數並不能當控制變數用，而不進行TSLS。
+
+# 3. 替代變數
+
+有時資料並沒有所要的變數，但有其他具有代表性的替代變數（proxies）。如所要變數為「智商」，但智商沒有一定的衡量指標，我們常使用「IQ測驗成績」來代表智商，原因是我們認為它與「智商」有高度相關，也就是說：
+$$IQ測驗成績_i=智商_i+ \epsilon_i,$$
+且兩者的correlation應該很高。要注意「智商」寫在式子右邊是因為邏輯上是智商影響IQ成績。
+
+考慮一個效應結構模型： 
+$$y_i=\beta^* x_i+\gamma w_i+y_{-x,-w,i}$$
+其中$x_i$為效應解釋變數，$w_i$為控制變數，故$y_{-x,-w,i}$為去除x與w影響的立足點。假設$y_{-x,-w,i}$已達成條件式獨立，故它與$x_i$不相關（注：$y_{-x,-w,i}$是立足點拆出控制變數訊息影響部份，所以它也與$w_i$無關）；因此，$E(y_i|x_i,w_i)$中$x_i$的係數會是$\beta^*$，可直接用複迴歸得到$\beta^*$的一致性估計。
+
+> 以下各題若需要額外條件，請寫清楚並依條件情境討論。
+
+## 3.1
+
+若我們沒有真正的$x_i$資料而改成使用它的替代變數$\tilde{x}_i$進行複迴歸，且令
+$$\tilde{x}_i=x_i+\epsilon_i.$$
+請問效應解釋變數使用替代變數下，$\tilde{x}_i$的OLS估計式還有一致性嗎？（驗證$E(y_i|\tilde{x}_i,w_i)$中$\tilde{x_i}$的係數是否為$\beta^*$）要有一致性會需要什麼額外條件嗎？
+
+***
+
+$$
+\begin{array}{lcl}
+E(y_i|\tilde{x_i},w_i)&=&E(\beta^* x_i+\gamma w_i+y_{-x,-w,i}|\tilde{x_i},w_i)\\
+&=&E(\beta^* (\tilde{x}_i-\epsilon)+\gamma w_i+y_{-x,-w,i}|\tilde{x_i},w_i)\\
+&=&E(\beta^* (\tilde{x}_i-\epsilon)|\tilde{x_i},w_i)+\gamma w_i+E(y_{-x,-w,i}|\tilde{x_i},w_i)\\
+&=&E(\beta^* (\tilde{x}_i-\epsilon)|\tilde{x_i},w_i)+\gamma w_i+E(y_{-x,-w,i}|\tilde{x_i})\mbox{  since}\\
+& & w_i\perp y_{-x,-w,i}.\\
+&=& \beta^*\tilde{x}_i-\beta^* E(\epsilon|\tilde{x_i},w_i)+E(y_{-x,-w,i}|\tilde{x_i})+\gamma w_i.
+\end{array}
+$$
+In the last expression, since $\tilde{x_i}=x_i+\epsilon$, $E(\epsilon|\tilde{x_i},w_i)$ must depend on $\tilde{x}_i$. The coefficient of $E(y_i|\tilde{x}_i,w_i)$ will be contaminated by that dependency and deviate from $\beta^*$. There is no assumption that can save the bias situation. 
+
+## 3.2
+
+若我們沒有真正的$w_i$資料而改成使用它的替代變數$\tilde{w}_i$進行複迴歸，且令
+$$\tilde{w}_i=w_i+\epsilon_i.$$
+請問控制變數使用替代變數下，$x_i$的OLS估計式還有一致性嗎？（驗證$E(y_i|x_i,\tilde{w}_i)$中$x_i$的係數是否為$\beta^*$）要有一致性會需要什麼額外條件嗎？
+
+***
+
+$$
+\begin{array}{lcl}
+y_i&=&\beta^* x_i+\gamma w_i+y_{-x,-w,i}\\
+&=&\beta^* x_i+\gamma \tilde{w}_i+\gamma (w_i-\tilde{w_i})+y_{-x,-w,i}
+\end{array}
+$$
+Therefore,
+$$
+\begin{array}{lcl}
+E(y_i|x_i,\tilde{w_i})&=&\beta^* x_i+\gamma \tilde{w}_i+\\
+& & \gamma E(w_i-\tilde{w_i}|x_i,\tilde{w_i})+\mbox{ (*)}\\ 
+& & E(y_{-x,-w,i}|x_i,\tilde{w_i})\mbox{ (**)}
+\end{array}
+$$
+
+For (**), $y_{-x,-w,i}\perp x_i$; therefore, 
+$$ 
+E(y_{-x,-w,i}|x_i,\tilde{w_i})=E(y_{-x,-w,i}|\tilde{w_i}),
+$$
+For (*), $w_i-\tilde{w_i}=-\epsilon_i$; therefore,
+$$
+E(w_i-\tilde{w_i}|x_i,\tilde{w_i})=-E(\epsilon_i|x_i,\tilde{w_i}).
+$$
+Together
+$$
+\begin{array}{lcl}
+E(y_i|x_i,\tilde{w_i})&=&\beta^* x_i+\gamma \tilde{w}_i+\\
+& & -\gamma E(\epsilon_i|x_i,\tilde{w_i})+\mbox{ (*)}\\ 
+& & E(y_{-x,-w,i}|\tilde{w_i})\mbox{ (**)}.
+\end{array}
+$$
+
+To ensure that the coefficient of $x_i$ equal to $\beta^*$, we need the assumption that $\epsilon_i\perp x_i$ so that $E(\epsilon_i|x_i,\tilde{w_i})=E(\epsilon_i |\tilde{w_i})$.
+
+> 現實應用我們常可將$\epsilon_i$想成真實變數的衡量誤差，有時可以放心假設它是外生隨機的干擾，此時控制變數改成其替代變數不會有問題，但效應解釋變數如果換成它的替代變數則還是會有偏誤。

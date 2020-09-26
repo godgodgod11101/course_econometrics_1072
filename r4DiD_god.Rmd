@@ -1,0 +1,183 @@
+---
+title: "r for panel"
+author: "王正評"
+date: "5/22/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+## 套件
+
+```{r pakages, include=FALSE}
+
+library(dplyr)
+library(ggplot2)
+
+```
+
+
+## 引入資料
+
+```{r}
+
+load(url("https://github.com/tpemartin/Econometric-Analysis/blob/master/data/public.rda?raw=true"))
+
+```
+
+```{r}
+
+public%>%
+  select(EMPFT, EMPPT, EMPFT2, EMPPT2) #資料為字串
+
+```
+
+```{r}
+
+public %>%
+  mutate_at(
+    vars(EMPFT,EMPPT,EMPFT2,EMPPT2),
+    list(as.numeric)      #funs的功能要被改掉了
+    ) -> public  
+
+public %>%
+  select(EMPFT,EMPPT,EMPFT2,EMPPT2) #資料變成數值了
+
+
+```
+
+
+## 不同州，政策前後的改變的mean
+
+```{r}
+
+public %>% 
+  group_by(STATE) %>%             # STATE=1 if NJ；STATE=0 if Pa
+  summarise(mFT_before=mean(EMPFT, na.rm=T),    #remove na值
+            mPT_before=mean(EMPPT, na.rm=T),
+            mFT_after=mean(EMPFT2, na.rm=T),
+            mPT_after=mean(EMPPT2, na.rm=T)
+            ) %>%
+  ungroup() -> employment_change
+  # ungroup：removes grouping，與group_by連用 
+
+```
+
+```{r}
+
+employment_change %>% 
+  select(STATE, mFT_before, mFT_after)
+
+
+```
+
+
+## 迴歸模型
+
+```{r}
+
+public %>%
+  select(STATE, EMPFT, EMPFT2)
+#需整理資料，依state和time分四組
+
+```
+
+
+```{r}
+
+library(tidyr)
+
+public %>% 
+  select(STATE,EMPFT,EMPFT2) %>%
+  group_by(STATE) %>%
+  gather(type,emp,-STATE) -> public2
+
+public2
+# 不考資料整理
+
+```
+
+
+## 產生虛擬變數
+
+```{r}
+
+public2 %>%
+  mutate(
+    STATE1=(STATE==1),
+    AFTER=(type=="EMPFT2"),
+    PolicyImpact=STATE1*AFTER  #邏輯變數相乘，TRUE=1 FALSE=0
+  ) -> public2
+
+public2
+
+```
+
+
+## Difference in Differences
+
+```{r}
+
+lm(emp ~ STATE1+AFTER+PolicyImpact, data=public2)->DiD_result
+DiD_result
+
+```
+
+```{r}
+
+lm(emp ~ STATE1+AFTER+I(STATE1*AFTER), data=public2)
+#I(STATE1*AFTER)的意思比較不直觀
+
+
+```
+
+# factor()的應用（省掉創造dummy的步驟）
+
+```{r}
+
+lm(emp ~ factor(STATE)+factor(type), data = public2)
+lm(emp ~ STATE1+AFTER, data = public2)
+
+```
+
+```{r}
+
+lm(emp ~ factor(STATE)+factor(type)+factor(STATE):factor(type), data = public2)
+lm(emp ~ factor(STATE)*factor(type), data=public2)
+
+```
+
+
+## 聚類標準誤
+
+```{r}
+
+library(clubSandwich)
+
+```
+
+```{r}
+
+public2 %>%
+  mutate(cluster=factor(STATE):factor(type)) -> public2
+
+```
+
+```{r}
+
+public2$cluster %>% class()
+public2$cluster %>% as.factor() %>% levels()
+
+```
+
+```{r}
+
+coef_test(DiD_result, vcov = "CR2", cluster = public2$cluster)
+#coef_test為clubSandwich裡的套件
+
+```
+
+

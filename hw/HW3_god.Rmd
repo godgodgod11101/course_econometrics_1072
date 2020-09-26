@@ -1,0 +1,579 @@
+---
+title: "HW3"
+author: "林茂廷"
+date: "5/30/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## 1 Equivalence between demean and first-difference
+考慮如下的固定效果模型：
+$$y_{it}=x_{it}'\beta+c_{i}+\epsilon_{it}.$$
+使用demean估計時，我們是以下式執行OLS估計： $$y_{it}-\bar{y}_{i.}=(x_{it}-\bar{x}_{i.})'\beta+(\epsilon_{it}-\bar{\epsilon}_{i.}).$$ 
+另一種方式是使用一階差分，也就是對下式執行OLS估計：
+$$\Delta y_{it}=\Delta x_{it}'\beta+\Delta \epsilon_{it}.$$
+若資料只有t=0,1兩期，說明使用demean估計與一階差分估計會得到相同結果（可以假設x為單一變數讓證明更簡單）。
+
+<div style="background-color:#f5deb3;">
+
+Ans.
+
+$$
+\hat{\beta}_{demean} 
+= \frac { 
+        \Sigma_{i=1}^N [(x_{i1}-\bar{ x_{i.} })-(\bar{ x_{.1} }-\frac {\Sigma_{i=1}^N \bar{ x_{i.} }} {N})] [(y_{i1}-\bar{ y_{i.} })-(\bar{ y_{.1} }-\frac {\Sigma_{i=0}^N \bar{ y_{i.} }} {N})]
+        + \Sigma_{i=1}^N [(x_{i0}-\bar{ x_{i.} })-(\bar{ x_{.0} }-\frac {\Sigma_{i=1}^N \bar{ x_{i.} }} {N})] [(y_{i0}-\bar{ y_{i.} })-(\bar{ y_{.0} }-\frac {\Sigma_{i=1}^N \bar{ y_{i.} }} {N})]
+        }
+        {
+        \Sigma_{i=1}^N [(x_{i1}-\bar{ x_{i.} })-(\bar{ x_{.1} }-\frac {\Sigma_{i=1}^N \bar{ x_{i.} }} {N})]^2 
+        + \Sigma_{i=1}^N [(x_{i0}-\bar{ x_{i.} })-(\bar{ x_{.0} }-\frac {\Sigma_{i=1}^N \bar{ x_{i.} }} {N})]^2
+        }
+$$
+$$
+= \frac { 
+        \Sigma_{i=1}^N [(x_{i1}-x_{i0})/2-(\bar{ x_{.1} }-\bar{ x_{.0} })/2] [(y_{i1}-y_{i0})/2-(\bar{ y_{.1} }-\bar{ y_{.0} })/2]
+        + \Sigma_{i=1}^N [(x_{i0}-x_{i1})/2-(\bar{ x_{.0} }-\bar{ x_{.1} })/2] [(y_{i0}-y_{i1})/2-(\bar{ y_{.0} }-\bar{ y_{.1} })/2]
+        }
+        {
+        \Sigma_{i=1}^N [(x_{i1}-x_{i0})/2-(\bar{ x_{.1} }-\bar{ x_{.0} })/2]^2
+        + \Sigma_{i=1}^N [(x_{i0}-x_{i1})/2-(\bar{ x_{.0} }-\bar{ x_{.1} })/2]^2
+        }
+$$
+
+$$
+= \frac { 
+        \frac{1}{4}
+        \Sigma_{i=1}^N [(x_{i1}-x_{i0})-(\bar{ x_{.1} }-\bar{ x_{.0} })] [(y_{i1}-y_{i0})-(\bar{ y_{.1} }-\bar{ y_{.0} })]
+        + \frac{1}{4}
+        \Sigma_{i=1}^N [(x_{i1}-x_{i0})-(\bar{ x_{.1} }-\bar{ x_{.0} })] [(y_{i1}-y_{i0})-(\bar{ y_{.1} }-\bar{ y_{.0} })]
+        }
+        {
+        \frac{1}{4}
+        \Sigma_{i=1}^N [(x_{i1}-x_{i0})-(\bar{ x_{.1} }-\bar{ x_{.0} })]^2
+        + \frac{1}{4}
+        \Sigma_{i=1}^N [(x_{i1}-x_{i0})-(\bar{ x_{.1} }-\bar{ x_{.0} })]^2
+        }
+$$
+$$
+= \frac { 
+        \frac{1}{2}
+        \Sigma_{i=1}^N [(x_{i1}-x_{i0})-(\bar{ x_{.1} }-\bar{ x_{.0} })] [(y_{i1}-y_{i0})-(\bar{ y_{.1} }-\bar{ y_{.0} })]
+        }
+        {
+        \frac{1}{2}
+        \Sigma_{i=1}^N [(x_{i1}-x_{i0})-(\bar{ x_{.1} }-\bar{ x_{.0} })]^2
+        }
+$$
+$$
+= \frac {
+        \Sigma_{i=1}^N [(x_{i1}-x_{i0})-(\bar{ x_{.1} }-\bar{ x_{.0} })] [(y_{i1}-y_{i0})-(\bar{ y_{.1} }-\bar{ y_{.0} })]
+        }
+        {
+        \Sigma_{i=1}^N [(x_{i1}-x_{i0})-(\bar{ x_{.1} }-\bar{ x_{.0} })]^2
+        }
+$$
+$$
+= \hat{\beta}_{一階差分}
+$$
+
+</div>
+
+## 2 廣義固定效果
+考慮以下廣義固定效果模型： 
+$$y_{it}=x_{it}'\beta+c_{i}+\delta_{t}+\epsilon_{it},$$
+定義以下平均表示符號：
+$$
+\begin{array}{lcl}
+\bar{w}_{i.}&=&\frac{\sum_{t=1}^T w_{it}}{T}\\
+\bar{w}_{.t}&=&\frac{\sum_{i=1}^N w_{it}}{N}\\
+\bar{\bar{w}}&=&\frac{\sum_i\sum_t w_{it}}{NT}
+\end{array}
+$$
+考慮如下的demean function 
+$$
+D(w_{it}|\bar{w}_{i.},\bar{w}_{.t},\bar{\bar{w}})=w_{it}-\bar{w}_{i.}-\bar{w}_{.t}+\bar{\bar{w}}
+$$
+說明對廣義固定效果模型左右式一起進行$D(.)$函數的demean轉換可以去除$c_i$及$\delta_t$兩個固定效果。
+
+<div style="background-color:#f5deb3;">
+
+Ans.
+
+假設x為單一解釋變數
+$$
+y_{it} = \beta x_{it} + c_{i} + \delta_{t} + \epsilon_{it}  \\
+\bar{ y_{i.} } = \beta \bar{ x_{i.} } + c_{i} + \bar{\delta} + \bar{ \epsilon_{i.} } \\
+\bar{ y_{.t} } = \beta \bar{ x_{.t} } + \bar{c} + \delta_{t} + \bar{ \epsilon_{.t} } \\
+\bar{ \bar{y} } =  \beta \bar{ \bar{x} } + \bar{c} + \bar{\delta} + \bar{ \bar{\epsilon} } 
+$$
+則
+
+$$
+D( y_{it} \space|\space \bar{y}_{i.} \space,\space \bar{y}_{.t} \space,\space \bar{\bar{y}} ) \\
+= y_{it} - \bar{y}_{i.} - \bar{y}_{.t} + \bar{\bar{y}} \\
+= \beta ( x_{it} - \bar{ x_{i.} } - \bar{ x_{.t} } + \bar{ \bar{x} } ) + ( c_i-c_i-\bar{c}+\bar{c} ) + ( \delta_t-\bar{\delta}-\delta_t+\bar{\delta} ) + ( \epsilon_{it} - \bar{ \epsilon_{i.} } - \bar{ \epsilon_{.t} } + \bar{ \bar{\epsilon} } ) \\
+= \beta ( x_{it} - \bar{ x_{i.} } - \bar{ x_{.t} } + \bar{ \bar{x} } ) + ( \epsilon_{it} - \bar{ \epsilon_{i.} } - \bar{ \epsilon_{.t} } + \bar{ \bar{\epsilon} } )
+$$
+進行$D(.)$函數的demean轉換後，可以去除$c_i$及$\delta_t$兩個固定效果。
+
+</div>
+
+
+## 3 Panel data的迴歸殘差
+考慮迴歸模型：
+$$
+y_{it}=\beta'x_{it}+\epsilon_{it}
+$$
+其中i代表某一家戶單位，t代表資料年份。
+
+研究者將$\epsilon_{it}$訊息拆解成
+
+  * $\alpha_i=\frac{\sum_{t=1}^T \epsilon_{it}}{T}$，及
+  
+  * $v_{it}=\epsilon_{it}-\alpha_i$為拆解後殘差。
+  
+（1）證明$\frac{\sum_{it} v_{it}\alpha_{i}}{NT}=0$。（註：當兩隨機變數w及z，其平均值為0時，$E(wz)=0$表示兩者covariance為0，即兩者無線性關連，故此題說明研究者的拆解方式會保證兩者sample covariance為0，有樣本上的零線性關連）
+
+<div style="background-color:#f5deb3;">
+
+Ans.
+
+$$
+\sum_{i}^{N} \sum_{t}^{T} v_{it}\alpha_{i} = \sum_{i}^{N} \sum_{t}^{T} (\epsilon_{it}-\alpha_i)\alpha_{i} \\
+= \sum_{i}^{N} \sum_{t}^{T} \epsilon_{it}\alpha_i - \sum_{i}^{N} \sum_{t}^{T} {\alpha_i}^2 \\
+= \sum_{i}^{N} \alpha_i \sum_{t}^{T} \epsilon_{it} - T\sum_{i}^{N} {\alpha_i}^2 \\
+= \sum_{i}^{N} \alpha_i (T\alpha_i) - T\sum_{i}^{N} {\alpha_i}^2 \\
+= T\sum_{i}^{N} {\alpha_i}^2 - T\sum_{i}^{N} {\alpha_i}^2 = 0
+$$
+所以
+$$
+\frac{\sum_{i}^{N} \sum_{t}^{T} v_{it}\alpha_{i}}{NT} = 0
+$$
+
+</div>
+
+
+（2）說明$E(v_{it}\alpha_i)=0$。（說理過程所使用的假設及定理都必需清楚寫下）
+
+<div style="background-color:#f5deb3;">
+
+Ans.
+
+假設$E(v_{it}\alpha_i)$為一常數，又
+$$
+0 = E(0) = E(\sum_{i}^{N} \sum_{t}^{T} v_{it}\alpha_{i}) = \sum_{i}^{N} \sum_{t}^{T} E(v_{it}\alpha_{i})
+$$
+所以
+$$E(v_{it}\alpha_{i}) = 0$$
+
+</div>
+
+
+令$\sigma_{\alpha}^2=V(\alpha_i)$，$\sigma_{v}^2=V(v_{it})$，及$\sigma_{\alpha,v}=cov(\alpha_i,v_{it})$
+
+（3）說明$cov(\alpha_i,v_{it})=0$且推導$V(\epsilon_{it})$，及$cov(\epsilon_{it},\epsilon_{is})$當$t\neq s$。
+
+<div style="background-color:#f5deb3;">
+
+Ans.
+
+$$E(\alpha_i) = E(\frac {\sum_{t=1}^T \epsilon_{it}} {T}) = T*\sum_{t=1}^T E(\epsilon_{it}) = 0$$
+$$E(v_{it}) = E(\epsilon_{it}-\alpha_i) = E(\epsilon_{it})- E(\alpha_i) = 0-0 = 0$$
+所以
+$$cov(\alpha_i,v_{it}) = E(\alpha_{i}v_{it})- E(\alpha_i)E(v_{it}) = 0-0 = 0$$
+
+</div>
+
+<div style="background-color:#66FF66;">
+
+已知$cov(\alpha_i,v_{it}) = 0$
+$$V(\epsilon_{it}) = V(\alpha_i+v_{it}) =  V(\alpha_i)+V(v_{it}) = {\sigma_{\alpha}}^2 + {\sigma_{v}}^2$$
+
+</div>
+
+<div style="background-color:	#D28EFF;">
+
+假設$cov(v_{it} , v_{is}) = 0 \space,\space t\neq s$
+
+$$cov(\epsilon_{it},\epsilon_{is}) = cov(\alpha_i+v_{it} , \alpha_i+v_{is}) = V(\alpha_i)+0+0+cov(v_{it} , v_{is}) = {\sigma_{\alpha}}^2$$
+
+</div>
+
+
+（4）由於家戶單位為隨機抽出，我們可以假設對任意的s及t，$cov(\epsilon_{it},\epsilon_{js})=0$當$i\neq j$（即任兩不同家戶的迴歸模型殘差無關）。令
+$$
+\begin{array}{lcl}
+\mathbf{\epsilon} &=&
+\begin{pmatrix}
+\mathbf{\epsilon}_1 \\ \mathbf{\epsilon}_2 \\ \vdots \\ \mathbf{\epsilon}_N
+\end{pmatrix}
+\mbox{ 其中 }
+\mathbf{\epsilon}_{i}=
+\begin{pmatrix}
+\epsilon_{i1}\\ \epsilon_{i2}\\ \vdots \\ \epsilon_{iT}
+\end{pmatrix}
+\mbox{ 為第i個家戶單位的殘差向量}\\
+\Omega&=&E(\epsilon\epsilon^T)
+\end{array}
+$$
+請推導$\Omega$矩陣內容（此即為Random effect模型的殘差共變異矩陣）。推導步驟若有用到任何假設，必需清楚標明。
+
+<div style="background-color:#f5deb3;">
+
+Ans.
+
+$$
+\begin{array}{lcl}
+
+\Omega &=& E(\epsilon\epsilon{'}) &=&
+E(
+\begin{bmatrix}
+
+\mathbf{\epsilon_1 \epsilon_1{'}} & \cdots & \mathbf{\epsilon_1 \epsilon_N{'}} \\ 
+\vdots                            & \ddots & \vdots                            \\
+\mathbf{\epsilon_N \epsilon_1{'}} & \cdots & \mathbf{\epsilon_N \epsilon_N{'}}
+
+\end{bmatrix} 
+) &=&
+\begin{bmatrix}
+
+E(\mathbf{\epsilon_1 \epsilon_1{'}}) & O & \cdots & O \\ 
+O                                    & E(\mathbf{\epsilon_2 \epsilon_2{'}}) & \cdots & O \\
+\vdots                               & \vdots & \ddots & \vdots \\
+O                                    & O & \cdots & E(\mathbf{\epsilon_N \epsilon_N{'}})
+
+\end{bmatrix}
+
+\end{array}
+$$
+
+其中
+
+$$
+\begin{array}{lcl}
+
+E(\mathbf{\epsilon_i \epsilon_i{'}}) &=&
+E(
+\begin{bmatrix}
+
+\mathbf{ {\epsilon_{i1}}^2 } & \cdots & \mathbf{ \epsilon_{i1} \epsilon_{iT} } \\ 
+\vdots                            & \ddots & \vdots                            \\
+\mathbf{ \epsilon_{iT} \epsilon_{i1} } & \cdots & \mathbf{ {\epsilon_{iT}}^2 }
+
+\end{bmatrix}
+) \\ &=&
+\begin{bmatrix}
+
+\mathbf{ V(\epsilon_{i1}) } & \cdots & \mathbf{ Cov(\epsilon_{i1} , \epsilon_{iT}) } \\ 
+\vdots                            & \ddots & \vdots                            \\
+\mathbf{ Cov(\epsilon_{iT} , \epsilon_{i1}) } & \cdots & \mathbf{ V(\epsilon_{iT}) }
+
+\end{bmatrix} \\ &=& 
+\begin{bmatrix}
+
+\mathbf{ {\sigma_{\alpha}}^2 + {\sigma_{v}}^2 } & \cdots & \mathbf{ {\sigma_{\alpha}}^2 } \\ 
+\vdots                            & \ddots & \vdots                            \\
+\mathbf{ {\sigma_{\alpha}}^2 } & \cdots & \mathbf{ {\sigma_{\alpha}}^2 + {\sigma_{v}}^2 }
+\end{bmatrix}
+
+\end{array}
+$$
+
+</div>
+
+
+（5）請問Fixed effect model的殘差指的是什麼？它的共變異矩陣在前述設定下會長怎麼樣？
+
+<div style="background-color:#f5deb3;">
+
+Ans.
+
+若$\alpha_i$與$x$有關，此時Fixed Effect Model的residual為$v_{it}$
+
+$$
+\begin{array}{lcl}
+
+E(VV') &=&
+\begin{bmatrix}
+
+E(\mathbf{ V_1 V_1{'} }) & O & \cdots & O \\ 
+O                                    & E(\mathbf{ V_2 V_2{'} }) & \cdots & O \\
+\vdots                               & \vdots & \ddots & \vdots \\
+O                                    & O & \cdots & E(\mathbf{ V_N V_N{'} })
+
+\end{bmatrix}
+
+\end{array}
+$$
+
+其中
+
+$$
+\begin{array}{lcl}
+
+E(\mathbf{V_i V_i{'}}) &=&
+E(
+\begin{bmatrix}
+
+\mathbf{ {V_{i1}}^2 } & \cdots & \mathbf{ V_{i1} V_{iT} } \\ 
+\vdots                            & \ddots & \vdots                            \\
+\mathbf{ V_{iT} V_{i1} } & \cdots & \mathbf{ {V_{iT}}^2 }
+
+\end{bmatrix}
+) \\ &=&
+\begin{bmatrix}
+
+\mathbf{ {\sigma_{v}}^2 } & \cdots & O \\ 
+\vdots                            & \ddots & \vdots                            \\
+O & \cdots & \mathbf{ {\sigma_{v}}^2 }
+\end{bmatrix}
+
+\end{array}
+$$
+
+</div>
+
+
+
+
+
+
+## 4 DiD
+考慮以下新聞：2015年8月北市3項老人福利政策施予對象以年滿65歲以上老人為主，只要持有敬老悠遊卡就可享有乘車優惠。
+
+我們想了解新政策是否增進老人行動力，$y$變數為某種行動力指標，$x$為代表「持有敬老悠遊卡就可享有乘車優惠」的效應解釋變數（若受此政策影響則為1，反之為0）。
+
+（1）假設資料均來自於2016年北市與新北市老年人抽樣，考慮如下迴歸模型：
+$$
+y_i=\beta_0+\beta^*x_i+\epsilon_i
+$$
+說明為何$\beta^*$的OLS估計不會正確。
+
+<div style="background-color:#f5deb3;">
+
+Ans.
+
+$\beta^*$的OLS估計值並不能代表真正$x$的效應係數。在資料均來自於2016年（政策實施後）台北市與新北市老年人的抽樣下，$x_i=1$這組皆為台北市老人，$x_i=0$這組皆為新北市老人。若排除政策實施的影響，台北市老人和新北市老人的平均行動力很有可能是存在差異的，因此若直接用此迴歸模型做估計，$\beta^*$的OLS估計值會涵蓋兩市立足點的差異，所以此OLS估計值是錯誤的。
+
+</div>
+
+
+假設資料來自於2014及2016年，分別以`t=0`及`t=1`表示。另外，以`s=0`表示新北市，`s=1`表示台北市。考慮如下迴歸模型：
+$$
+y_{st,i}=\beta_0+\beta^*x_{st,i}+\epsilon_{st,i}
+$$
+（2）說明$\beta^*$的OLS估計式是在計算「2016年台北市老人平均活動力」減去「2014年台北市，及2014/2016兩年新北市老人平均活動力」
+。
+
+<div style="background-color:#f5deb3;">
+
+Ans.
+<table width="200" border="1">
+　<tr>
+　<td></td>
+　<td>$t=0$</td>
+　<td>$t=1$</td>
+　</tr>
+　<tr>
+　<td>$s=0$</td>
+　<td>$x_{st,i}=0$</td>
+　<td>$x_{st,i}=0$</td>
+　</tr>
+　<tr>
+　<td>$s=1$</td>
+　<td>$x_{st,i}=0$</td>
+　<td>$x_{st,i}=1$</td>
+　</tr>
+</table>
+
+根據上述表格，可知「2016年台北市老人平均活動力」為
+$$E(y_{st,i} | x_{st,i}=1) = \beta_0+\beta^*$$
+「2014年台北市，及2014/2016兩年新北市老人平均活動力」為
+$$E(y_{st,i} | x_{st,i}=0) = \beta_0$$
+所以$\beta^*$的OLS估計式是在計算「2016年台北市老人平均活動力」減去「2014年台北市，及2014/2016兩年新北市老人平均活動力」
+$$E(y_{st,i} | x_{st,i}=1) - E(y_{st,i} | x_{st,i}=0) = \beta_0+\beta^*-\beta_0 = \beta^*$$
+
+</div>
+
+
+（3）承接上題。說明OLS估計不能代表「悠遊卡福利政策」影響。
+
+<div style="background-color:#f5deb3;">
+
+Ans.
+
+$\beta^*$的OLS估計值並不能代表真正$x$的效應係數。若排除政策實施的影響，不管在哪一期，台北市老人（s=1）和新北市老人（s=0）的平均行動力很有可能是存在差異的；亦或不管在台北市或新北市，同一市的老人在兩期間的平均行動力也十分有可能不同。因此若直接用此迴歸模型做估計，$\beta^*$的OLS估計值會涵蓋立足點的差異，所以此OLS估計值並不能代表「悠遊卡福利政策」的影響。
+
+</div>
+
+
+接著考慮如下迴歸模型：
+$$
+y_{st,i}=\beta_0+\alpha_1D1_s+\beta^*x_{st,i}+\epsilon_{st,i}
+$$
+其中$D1$為代表「台北市」的虛擬變數。
+
+（4）說明$\beta^*$的OLS估計式是在計算「2016年台北市老人平均活動力」減去「2014年台北市老人平均活動力」。
+
+<div style="background-color:#f5deb3;">
+
+Ans.
+
+「2016年台北市老人平均活動力」為
+$$E(y_{st,i} | D1_s=1 \space,\space x_{st,i}=1) = \beta_0+\alpha_1+\beta^*$$
+「2014年台北市老人平均活動力」為
+$$E(y_{st,i} | D1_s=1 \space,\space x_{st,i}=0) = \beta_0+\alpha_1$$
+所以$\beta^*$的OLS估計式是在計算「2016年台北市老人平均活動力」減去「2014年台北市老人平均活動力」
+$$
+E(y_{st,i} | D1_s=1 \space,\space x_{st,i}=1) - E(y_{st,i} | D1_s=1 \space,\space x_{st,i}=0) \\
+= \beta_0+\alpha_1+\beta^* - \beta_0-\alpha_1 \\
+= \beta^*
+$$
+
+</div>
+
+
+（5）承接上題。說明OLS估計不能代表「悠遊卡福利政策」影響。
+
+<div style="background-color:#f5deb3;">
+
+Ans.
+
+$\beta^*$的OLS估計值並不能代表真正$x$的效應係數。若排除政策實施的影響，台北市的老人在兩期間的平均行動力很有可能不同。因此若直接用此迴歸模型做估計，$\beta^*$的OLS估計值會涵蓋立足點的差異，所以此OLS估計值並不能代表「悠遊卡福利政策」的影響。
+
+</div>
+
+接著考慮如下迴歸模型：
+$$
+y_{st,i}=\beta_0+\delta_1B1_t+\beta^*x_{st,i}+\epsilon_{st,i}
+$$
+其中$B1$為代表「2016年」的虛擬變數。
+
+（6）說明$\beta^*$的OLS估計式是在計算「2016年台北市老人平均活動力」減去「2016年新北市老人平均活動力」。
+
+<div style="background-color:#f5deb3;">
+
+Ans.
+
+「2016年台北市老人平均活動力」為
+$$E(y_{st,i} | B1_t=1 \space,\space x_{st,i}=1) = \beta_0+\delta_1+\beta^*$$
+「2016年新北市老人平均活動力」為
+$$E(y_{st,i} | B1_t=1 \space,\space x_{st,i}=0) = \beta_0+\delta_1$$
+所以$\beta^*$的OLS估計式是在計算「2016年台北市老人平均活動力」減去「2016年新北市老人平均活動力」
+$$
+E(y_{st,i} | B1_t=1 \space,\space x_{st,i}=1) - E(y_{st,i} | B1_t=1 \space,\space x_{st,i}=0) \\
+= \beta_0+\delta_1+\beta^* - \beta_0-\delta_1\\
+= \beta^*
+$$
+
+</div>
+
+
+（7）承接上題。說明OLS估計不能代表「悠遊卡福利政策」影響。
+
+<div style="background-color:#f5deb3;">
+
+Ans.
+
+$\beta^*$的OLS估計值並不能代表真正$x$的效應係數。若排除政策實施的影響，在2016年（t=1），台北市老人（s=1）和新北市老人（s=0）的平均行動力很有可能不同。因此若直接用此迴歸模型做估計，$\beta^*$的OLS估計值會涵蓋立足點的差異，所以此OLS估計值並不能代表「悠遊卡福利政策」的影響。
+
+</div>
+
+
+前面的題目點出政策效果的研究難處在於處理「比較對象立足點差異」及「政策前後的時間差異可能代表其他非政策的影響」，為解決這問題考慮以下的迴歸模型（即DiD）：
+
+$$
+y_{st,i}=\beta_0+\alpha_1 D1_s+\delta_1 B1_t+\beta^*x_{st,i}+\epsilon_{st,i}
+$$
+
+（8）說明第6小題「2016年台北市老人平均活動力」減去「2016年新北市老人平均活動力」不只帶有政策效果$\beta^*$，還帶有兩市立足點（即沒有政策效果下）的差異$\alpha_1$。
+
+<div style="background-color:#f5deb3;">
+
+Ans.
+
+根據此迴歸模型，「2016年台北市老人平均活動力」為
+$$E(y_{st,i} | D1_s=1 \space,\space B1_t=1 \space,\space x_{st,i}=1) = \beta_0+\alpha_1+\delta_1 +\beta^*$$
+「2016年新北市老人平均活動力」為
+$$E(y_{st,i} | D1_s=0 \space,\space B1_t=1 \space,\space x_{st,i}=0) = \beta_0+\delta_1$$
+所以「2016年台北市老人平均活動力」減去「2016年新北市老人平均活動力」不只帶有政策效果$\beta^*$，還帶有兩市立足點（即沒有政策效果下）的差異$\alpha_1$
+$$
+E(y_{st,i} | D1_s=1 \space,\space B1_t=1 \space,\space x_{st,i}=1) - E(y_{st,i} | D1_s=0 \space,\space B1_t=1 \space,\space x_{st,i}=0) \\
+= \beta_0+\alpha_1+\delta_1 +\beta^*-\beta_0-\delta_1 \\
+= \alpha_1+\beta^*
+$$
+
+</div>
+
+
+（9）說明$\beta^*$的OLS估計是第8小題的相減結果，再減去「2014年台北市減去新北市的老人平均活動力」，其中後者反應了兩市立足點的差異（即$\alpha_1$）。
+
+<div style="background-color:#f5deb3;">
+
+Ans.
+
+「2014年台北市老人平均活動力」為
+$$E(y_{st,i} | D1_s=1 \space,\space B1_t=0 \space,\space x_{st,i}=0) = \beta_0+\alpha_1$$
+「2014年新北市老人平均活動力」為
+$$E(y_{st,i} | D1_s=0 \space,\space B1_t=0 \space,\space x_{st,i}=0) = \beta_0$$
+「2014年台北市老人平均活動力」減去「2014年新北市的老人平均活動力」為
+$$
+E(y_{st,i} | D1_s=1 \space,\space B1_t=0 \space,\space x_{st,i}=0) - E(y_{st,i} | D1_s=0 \space,\space B1_t=0 \space,\space x_{st,i}=0) \\
+= \beta_0+\alpha_1-\beta_0 \\
+= \alpha_1
+$$
+2014年政策尚未實施，兩市的老人平均活動力相減只會呈現立足點的差異。
+
+將第8小題的結果與上述相減
+$$
+[E(y_{st,i} | D1_s=1 , B1_t=1 , x_{st,i}=1) - E(y_{st,i} | D1_s=0 , B1_t=1 , x_{st,i}=0)] - [E(y_{st,i} | D1_s=1 , B1_t=0 , x_{st,i}=0) - E(y_{st,i} | D1_s=0 , B1_t=0 , x_{st,i}=0)] \\
+= \alpha_1+\beta^*-\alpha_1 \\
+= \beta^*
+$$
+
+</div>
+
+
+（10）很明顯的DiD需要假設：在「不存在福利政策下」，「2014年雙北平均差異」及「2016年雙北平均差異」要相同，即立足點差異不因時間改變。若2016年雙北老年人平均年齡差距拉大（假設北市較高），說明DiD估計會有偏誤。要如何決解？
+
+<div style="background-color:#f5deb3;">
+
+Ans.
+
+「雙北老年人的平均年齡差異」很可能是造成雙北老年人平均行動力不同的一項重要因素。台北市老人平均年齡較高，在排除政策效果的影響下，其平均行動力應該較低，倘若「雙北老年人的平均年齡差異」還會隨著時間改變，代表這項因素在組間面項與時間面項都會有影響（2014年與2016年兩市立足點差異會不同）。
+
+假設2016年雙北老年人平均年齡差距拉大，會造成雙北老年人平均行動力差距變大（立足點差異擴大），根據第9小題，$\beta^*$的DiD估計值會有負項偏誤，實際$x_{st,i}$的效應應該更大（假設$\beta^*$的估計值為正，$\alpha_1$的估計值為負）。
+
+想得到真正$\beta^*$的估計值，必須先排除「老年人的年齡」的影響。假設「老年人的年齡」為控制變數$\omega_{st,i}$，則
+
+Stage 1：排除「老年人的年齡」的影響
+$$y \hspace{4mm} project \space on \hspace{4mm} \omega \space,\space obtain \hspace{4mm} y-\hat{y_\omega}$$
+$$x \hspace{4mm} project \space on \hspace{4mm} \omega \space,\space obtain \hspace{4mm} x-\hat{x_\omega}$$
+
+Stage 2：找出組間與時間固定效果，做DiD
+
+$$y-\hat{y_\omega} \hspace{4mm} project \space on \hspace{4mm} x-\hat{x_\omega}$$
+
+</div>
+
+
+## 5 應用
+Run the following codes to download **fatality** data frame object
+```{r}
+load(url("https://github.com/tpemartin/github-data/blob/master/fatality.Rdata?raw=true"))
+```
+
+This is the data for the traffic motality study we discussed during the class
+
+To study the effect of Beer Tax Rate (beertax) on Vehicle Fatality Rate (mrall), we consider the following model:$mrall_{it}=beertax_{it}\beta+c_{i}+\delta_{t}+\epsilon_{it}$,where i represents the i-th state from the U.S. and t represents years. Therefore, $c_{i}$ captures the state effect and $\delta_{t}$ captures the time effect.
+
+1. Use pooled regression model for estimating $\beta$ via OLS.
+
+2. Use Fixed effects model for estimating $\beta$ via LSDV.
+
+3. Compared the results from 2 with from 1, why does the sign of $\beta$ estimate flips?
+
+4. Use Random effects model for estimating $\beta$. Is random effect model more appropriate than the pooled regression model? Is random effect model more appropriate than the fixed effect model?

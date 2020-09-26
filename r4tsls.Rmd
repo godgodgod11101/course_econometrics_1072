@@ -1,0 +1,231 @@
+---
+title: "R for TSLS"
+author: "姓名"
+date: "3/6/2019"
+output: 
+  html_document: 
+    toc: true
+    toc_depth: 3
+    number_sections: true
+    toc_float:
+      collapsed: true
+      smooth_scroll: false
+    code_folding: hide
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, eval=T)
+```
+
+```{r ,include=FALSE}
+
+library(dplyr)
+library(magrittr)
+library(AER)
+
+```
+
+```{r}
+
+data("CigarettesSW")
+
+```
+
+```{r}
+
+class(CigarettesSW)
+
+```
+
+
+as_tibble()
+
+```{r 11}
+
+CigarettesSW %>% as_tibble() -> CigarettesSW #串接寫法
+as_tibble(CigarettesSW) -> CigarettesSW #非串接寫法
+# function要有刮號
+class(CigarettesSW)
+CigarettesSW
+
+```
+
+```{r 12}
+
+CigarettesSW %<>% as_tibble() # %<>%：magrittr套件下的功能，意為雙向串接
+CigarettesSW
+
+```
+
+
+
+
+```{r 21}
+
+CigarettesSW %>% filter(year=="1995") -> CigarettesSW # 只取1995年資料
+# 使用filter()函式可選要分析的觀察值，也就是針對Row做子集，使用方法為filter(資料名稱, 篩選條件)
+
+```
+
+```{r 22}
+CigarettesSW %<>% filter(year=="1995") 
+
+```
+
+```{r 3}
+
+CigarettesSW %<>% 
+  mutate(
+    rprice=price/cpi,
+    rincome=income/(population*cpi),
+    tdiff=(taxs-tax)/cpi
+  )
+
+CigarettesSW %>%
+  mutate(
+    rprice = price/cpi,
+    rincome = income/(population*cpi),
+    tdiff = (taxs-tax)/cpi
+  ) -> CigarettesSW
+
+```
+
+
+```{r 41}
+
+model1<-log(packs) ~ log(rprice) 
+model2<-log(packs) ~ log(rprice) + log(rincome) #可先把formula存起來
+class(model1)
+
+```
+
+```{r 42}
+
+model1_noConstant <- log(packs) ~ log(rprice)+0
+model1_noConstant <- log(packs) ~ log(rprice)-1
+# 無截距回歸
+
+```
+
+
+
+OLS
+```{r}
+
+ols1<-lm(model1, data=CigarettesSW)
+ols2<-lm(model2, CigarettesSW)
+
+```
+
+
+```{r, include=FALSE}
+
+library(sandwich)
+library(lmtest)
+library(stargazer)
+
+```
+
+
+```{r}
+
+lmtest::coeftest(ols1, vcov. = sandwich::vcovHC, type="HC1") -> ols1_coeftest
+coeftest(ols2, vcov. = vcovHC, type="HC1") -> ols2_coeftest
+
+```
+
+```{r}
+
+ols1
+ols1_coeftest
+# 調整standard error不影響迴歸係數
+
+```
+
+
+```{r, results='asis'}
+
+stargazer(ols1, ols2, 
+          column.labels = c("簡迴歸","複迴歸"), 
+          se = list (ols1_coeftest[,2],  ols2_coeftest[,2]),
+          type="html",
+          align=T
+          )
+
+```
+
+
+
+
+
+TSLS
+```{r}
+
+tsls_1iv <- ivreg(
+  log(packs) ~ log(rprice) + log(rincome) | log(rincome) + tdiff,
+  data=CigarettesSW
+  ) 
+# ivreg為AER套件下的函式，前面放2-stage，後面放1-stage（所有工具變數）
+
+tsls_2iv <- ivreg(
+  log(packs) ~ log(rprice) + log(rincome) | log(rincome) + tdiff + I(tax/cpi),
+  data=CigarettesSW
+  ) 
+# I()：先形成新的變數，再來跑迴歸
+
+```
+
+```{r, include=FALSE}
+
+library(broom)
+
+```
+
+```{r}
+
+tidy(ols2)
+tidy(tsls_1iv)
+
+```
+
+```{r}
+
+class(tsls_1iv)
+
+```
+
+
+
+Sargan：排除條件檢定
+Weak instruments：工具變數關聯性檢定
+Wu-Hausman：遺漏變數偏誤檢定
+
+```{r}
+
+summary(tsls_1iv, diagnostics = T, df = Inf)
+
+```
+
+```{r}
+
+summary(tsls_1iv, vcov = sandwich, diagnostics = TRUE, df=Inf)
+# vcov = sandwich：使用sandwich公式調整的standard error
+# diagnostics = TRUE, df=Inf：做工具變數的三個檢定，自由度為無限（大樣本）
+
+
+```
+
+```{r}
+
+summary(tsls_2iv, vcov = sandwich, diagnostics = TRUE, df=Inf)
+
+```
+
+```{r}
+
+class(ols1)
+# 如果summary(ols, ...)，無法直接用vcov功能，原因是ols不是ivreg物件
+# summary()在物件為ivreg時的特別功能為AER套件裡增加的，非base套件下的summary()
+
+```
+
