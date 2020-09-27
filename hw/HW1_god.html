@@ -1712,26 +1712,37 @@ F Statistic
 <p>
 若直接用<span class="math inline">\(E(Y_i | T_i)\)</span>的簡迴歸模型，<span class="math inline">\(T_i\)</span>的估計係數將包含立足點的差異，產生正向偏誤，這樣會高估<span class="math inline">\(T_i\)</span>的效應值。
 </p>
+<p style="background-color:DodgerBlue; color:white;">
+此題的treatment model，是想單純衡量「擋修制度」是否會影響學生個經的學習成效。未被擋修的群（<span class="math inline">\(T_i=1\)</span>），可能存在其它因素，使得該群的<span class="math inline">\(個經PR\)</span>相對較好，例如：未被擋修的群，對經濟學有較深厚的興趣，因此該群被擋修的<span class="math inline">\(個經PR\)</span>（假設）應該相對較高。若存在此種因素，將使得上題簡回歸的估計結果不正確。
+</p>
+<p><br><br><br></p>
 </div>
 <div id="選擇性偏誤-1" class="section level2">
 <h2>1.5 選擇性偏誤</h2>
 <p>這個資料還包含<strong>經原PR</strong>變數，它是學生最後修過的經原成績在該經原班的排名。說明有必要控制<strong>經原PR</strong>的理由（非數學證明）。</p>
 <p>Ans.</p>
-<p><span class="math inline">\(經原PR\)</span>高的學生應該大多數落在<span class="math inline">\(可修個體=1\)</span>的群體中；且經濟學原理是個體經濟學前的基礎課程，<span class="math inline">\(經原PR\)</span>高的學生應該<span class="math inline">\(Y_i\)</span>也高。所以<span class="math inline">\(經原PR\)</span>應該是一個造成選擇性偏誤的因素，應該將其納入當成控制變數。</p>
+<p>
+<span class="math inline">\(經原PR\)</span>高的學生應該大多數落在<span class="math inline">\(可修個體=1\)</span>的群體中；且經濟學原理是個體經濟學前的基礎課程，<span class="math inline">\(經原PR\)</span>高的學生應該<span class="math inline">\(Y_i\)</span>也高。所以<span class="math inline">\(經原PR\)</span>應該是一個造成選擇性偏誤的因素，應該將其納入當成控制變數。
+</p>
+<p style="background-color:DodgerBlue; color:white;">
+「擋修制度」使得<span class="math inline">\(經原PR\)</span>高的學生落在<span class="math inline">\(T_i=1\)</span>的群體中，且經濟學原理是個體經濟學前的基礎課程，<span class="math inline">\(經原PR\)</span>高的學生應該<span class="math inline">\(個經PR\)</span>也高。所以<span class="math inline">\(經原PR\)</span>應是一個造成選擇性偏誤的因素，應將其納入控制變數中。
+</p>
+<p><br><br><br></p>
 </div>
 <div id="複迴歸模型" class="section level2">
 <h2>1.6 複迴歸模型</h2>
 <p>估算以下的複迴歸模型： <span class="math display">\[個經PR_i=\beta_0+\beta_1 可修個體_i+經原PR_i+\epsilon_i.\]</span> （注意估計式標準誤必需使用穩健標準誤robust standard error，即使用三明治及HC調整後的標準誤。）</p>
 <p>Ans.</p>
-<pre class="r"><code>model2 &lt;- lm((個經PR)~ (可修個體)+(經原PR), data = hw1Data)
+<pre class="r"><code>model2 &lt;- lm(個經PR ~ 可修個體 + 經原PR , data = hw1Data)
 model2_coeftest &lt;- coeftest(model2, vcov. = vcovHC, type=&quot;HC1&quot;)
 
-stargazer(model1, model2,
-          column.labels = c(&quot;簡迴歸&quot;, &quot;複迴歸&quot;), 
-          se = list(model1_coeftest[,&quot;Std. Error&quot;], model1_coeftest[,&quot;Std. Error&quot;]),
-          type = &quot;html&quot;,
-          align = T
-          )</code></pre>
+stargazer(
+  model1, model2,
+  column.labels = c(&quot;簡迴歸&quot;, &quot;複迴歸&quot;), 
+  se = list(model1_coeftest[,&quot;Std. Error&quot;], model2_coeftest[,&quot;Std. Error&quot;]),
+  type = &quot;html&quot;,
+  align = T
+)</code></pre>
 <table style="text-align:center">
 <tr>
 <td colspan="3" style="border-bottom: 1px solid black">
@@ -1753,11 +1764,8 @@ stargazer(model1, model2,
 <tr>
 <td style="text-align:left">
 </td>
-<td>
+<td colspan="2">
 個經PR
-</td>
-<td>
-(個經PR)
 </td>
 </tr>
 <tr>
@@ -1820,7 +1828,7 @@ stargazer(model1, model2,
 <td>
 </td>
 <td>
-0.096
+0.096<sup>**</sup>
 </td>
 </tr>
 <tr>
@@ -1829,6 +1837,7 @@ stargazer(model1, model2,
 <td>
 </td>
 <td>
+(0.039)
 </td>
 </tr>
 <tr>
@@ -1857,7 +1866,7 @@ Constant
 (0.026)
 </td>
 <td>
-(0.026)
+(0.029)
 </td>
 </tr>
 <tr>
@@ -1940,28 +1949,31 @@ F Statistic
 </td>
 </tr>
 </table>
-<ul>
-<li>
-若考慮控制變數<span class="math inline">\(經原PR\)</span>，<span class="math inline">\(可修個體\)</span>的估計係數從0.079降到0.068，代表簡迴歸下<span class="math inline">\(可修個體\)</span>的估計係數有正向偏誤，真實的效應值應該較小
-</li>
-</ul>
+<p style="background-color:DodgerBlue; color:white;">
+若考慮控制變數<span class="math inline">\(經原PR\)</span>，<span class="math inline">\(T\)</span>的估計係數從0.079降到0.068，代表簡迴歸下<span class="math inline">\(T\)</span>的估計係數有正向偏誤，真實的效應值應該較小
+</p>
+<p><br><br><br></p>
 </div>
 <div id="變數關連" class="section level2">
 <h2>1.7 變數關連</h2>
-<p>請計算<strong>可修個體</strong>為1與0兩群人的<strong>經原PR平均</strong>及<strong>個經PR平均</strong>。（hint: 可利用dplyr套件下的<code>group_by()</code>,<code>summarise()</code>，及<code>mean( ,na.rm=T)</code>, na.rm=T表示計算時排除NA值）</p>
-<p>Ans.</p>
-<pre class="r"><code>group_by(hw1Data, 可修個體) %&gt;%
+<p>請計算<strong>可修個體</strong>為1與0兩群人的<strong>經原PR平均</strong>及<strong>個經PR平均</strong>。（hint: 可利用dplyr套件下的<code>group_by()</code>,<code>summarise()</code>，及<code>mean( ,na.rm=T)</code>, na.rm=T表示計算時排除NA值） Ans.</p>
+<pre class="r"><code>hw1Data %&gt;% 
+  mutate(
+    ., 可修個體 = (可修個體 == 1)
+  ) %&gt;% 
+  group_by(., 可修個體) %&gt;%
   summarise(
     經原PR平均數=mean(經原PR,na.rm=T), 
     個經PR平均數=mean(個經PR,na.rm=T)
-    )</code></pre>
+  ) %&gt;% 
+  ungroup()</code></pre>
 <pre><code>## # A tibble: 2 x 3
 ##   可修個體 經原PR平均數 個經PR平均數
-##      &lt;dbl&gt;        &lt;dbl&gt;        &lt;dbl&gt;
-## 1        0        0.320        0.285
-## 2        1        0.383        0.364</code></pre>
+##   &lt;lgl&gt;           &lt;dbl&gt;        &lt;dbl&gt;
+## 1 FALSE           0.320        0.285
+## 2 TRUE            0.383        0.364</code></pre>
 <pre class="r"><code># group_by()函數的功能為設定分組依據，通常會與summarise()函式合併使用</code></pre>
-<p><span class="math inline">\(可修個體=1\)</span>的這群學生<span class="math inline">\(經原PR\)</span>之平均數果然較高。</p>
+<p><span class="math inline">\(T_i=1\)</span>的這群學生<span class="math inline">\(經原PR\)</span>之平均數果然較高。 <br><br><br></p>
 </div>
 <div id="偏誤方向" class="section level2">
 <h2>1.8 偏誤方向</h2>
@@ -1971,13 +1983,13 @@ F Statistic
 <li><strong>經原PR</strong>與<strong>個經PR</strong>有(5)<em>正向</em>(正向/反向)關連</li>
 <li><strong>可修個體</strong>=1的族群，其<strong>經原PR</strong>平均較(6)<em>高</em>(高/低)</li>
 </ol>
-<p>故若不控制<strong>經原PR</strong>，因<strong>可修個體</strong>=1與=0兩群人也會分別帶有 <strong>經原PR</strong> (7)<em>高與低</em>(高與低/低與高)特質，所以<strong>可修個體</strong>=1的人其<strong>個經PR</strong>高，有部份是因其<strong>經原PR</strong>也較(8)<em>高</em>(高/低)所至。</p>
+<p>故若不控制<strong>經原PR</strong>，因<strong>可修個體</strong>=1與=0兩群人也會分別帶有 <strong>經原PR</strong> (7)<em>高與低</em>(高與低/低與高)特質，所以<strong>可修個體</strong>=1的人其<strong>個經PR</strong>高，有部份是因其<strong>經原PR</strong>也較(8)<em>高</em>(高/低)所至。 <br><br><br></p>
 </div>
 <div id="optional-可不寫" class="section level2">
 <h2>1.9 (Optional, 可不寫)</h2>
 <p>從前面的論述你發現什麼？背後的效應反映出什麼課程結構或學生學習問題？你會怎麼延伸研究下去。</p>
 <p>Ans.</p>
-<p>數據上顯示學生的<span class="math inline">\(個經PR\)</span>的確會受到同儕效果的影響，被擋修的學生在修個經時，不是和班上同學一起修的，比較難有同伴可以討論課業，導致學習成效比較不好。所以經濟系擋修制度的廢存尚有討論的空間。</p>
+<p>數據上顯示學生的<span class="math inline">\(個經PR\)</span>的確會受到同儕效果的影響，被擋修的學生在修個經時，不是和班上同學一起修的，比較難有同伴可以討論課業，導致學習成效比較不好。所以經濟系擋修制度的廢存尚有討論的空間。 <br><br><br></p>
 </div>
 </div>
 <div id="理論" class="section level1">

@@ -139,7 +139,6 @@ stargazer(
 ## 1.4 選擇性偏誤
 上題的估計結果很可能不正確，請說明原因故事（非數學證明）。
 
-
 Ans.
 
 <p>
@@ -154,14 +153,27 @@ $可修個體=1$與$可修個體=0$這兩群學生的立足點（$Y_{0i}$）應�
 若直接用$E(Y_i | T_i)$的簡迴歸模型，$T_i$的估計係數將包含立足點的差異，產生正向偏誤，這樣會高估$T_i$的效應值。
 </p>
 
+<p style="background-color:DodgerBlue; color:white;">
+此題的treatment model，是想單純衡量「擋修制度」是否會影響學生個經的學習成效。未被擋修的群（$T_i=1$），可能存在其它因素，使得該群的$個經PR$相對較好，例如：未被擋修的群，對經濟學有較深厚的興趣，因此該群被擋修的$個經PR$（假設）應該相對較高。若存在此種因素，將使得上題簡回歸的估計結果不正確。
+</p>
+<br><br><br>
+
+
 
 ## 1.5 選擇性偏誤
 這個資料還包含**經原PR**變數，它是學生最後修過的經原成績在該經原班的排名。說明有必要控制**經原PR**的理由（非數學證明）。
 
-
 Ans.
 
+<p>
 $經原PR$高的學生應該大多數落在$可修個體=1$的群體中；且經濟學原理是個體經濟學前的基礎課程，$經原PR$高的學生應該$Y_i$也高。所以$經原PR$應該是一個造成選擇性偏誤的因素，應該將其納入當成控制變數。
+</p>
+
+<p style="background-color:DodgerBlue; color:white;">
+「擋修制度」使得$經原PR$高的學生落在$T_i=1$的群體中，且經濟學原理是個體經濟學前的基礎課程，$經原PR$高的學生應該$個經PR$也高。所以$經原PR$應是一個造成選擇性偏誤的因素，應將其納入控制變數中。
+</p>
+<br><br><br>
+
 
 
 ## 1.6 複迴歸模型
@@ -169,47 +181,52 @@ $經原PR$高的學生應該大多數落在$可修個體=1$的群體中；且經
 $$個經PR_i=\beta_0+\beta_1 可修個體_i+經原PR_i+\epsilon_i.$$
 （注意估計式標準誤必需使用穩健標準誤robust standard error，即使用三明治及HC調整後的標準誤。）
 
-
 Ans.
 
 ```{r ans16, results='asis'}
 
-model2 <- lm((個經PR)~ (可修個體)+(經原PR), data = hw1Data)
+model2 <- lm(個經PR ~ 可修個體 + 經原PR , data = hw1Data)
 model2_coeftest <- coeftest(model2, vcov. = vcovHC, type="HC1")
 
-stargazer(model1, model2,
-          column.labels = c("簡迴歸", "複迴歸"), 
-          se = list(model1_coeftest[,"Std. Error"], model1_coeftest[,"Std. Error"]),
-          type = "html",
-          align = T
-          )
+stargazer(
+  model1, model2,
+  column.labels = c("簡迴歸", "複迴歸"), 
+  se = list(model1_coeftest[,"Std. Error"], model2_coeftest[,"Std. Error"]),
+  type = "html",
+  align = T
+)
 
 ```
-
-<ul>
-  <li>若考慮控制變數$經原PR$，$可修個體$的估計係數從0.079降到0.068，代表簡迴歸下$可修個體$的估計係數有正向偏誤，真實的效應值應該較小</li>
-</ul>
+<p style="background-color:DodgerBlue; color:white;">
+若考慮控制變數$經原PR$，$T$的估計係數從0.079降到0.068，代表簡迴歸下$T$的估計係數有正向偏誤，真實的效應值應該較小
+</p>
+<br><br><br>
 
 
 
 ## 1.7 變數關連
 請計算**可修個體**為1與0兩群人的**經原PR平均**及**個經PR平均**。（hint: 可利用dplyr套件下的`group_by()`,`summarise()`，及`mean( ,na.rm=T)`, na.rm=T表示計算時排除NA值） 
-
-
 Ans.
 
 ```{r ans17}
 
-group_by(hw1Data, 可修個體) %>%
+hw1Data %>% 
+  mutate(
+    ., 可修個體 = (可修個體 == 1)
+  ) %>% 
+  group_by(., 可修個體) %>%
   summarise(
     經原PR平均數=mean(經原PR,na.rm=T), 
     個經PR平均數=mean(個經PR,na.rm=T)
-    )
+  ) %>% 
+  ungroup()
 
 # group_by()函數的功能為設定分組依據，通常會與summarise()函式合併使用
 
 ```
-$可修個體=1$的這群學生$經原PR$之平均數果然較高。
+$T_i=1$的這群學生$經原PR$之平均數果然較高。
+<br><br><br>
+
 
 
 ## 1.8 偏誤方向
@@ -221,6 +238,9 @@ $可修個體=1$的這群學生$經原PR$之平均數果然較高。
   2. **可修個體**=1的族群，其**經原PR**平均較(6)_高_(高/低)
   
 故若不控制**經原PR**，因**可修個體**=1與=0兩群人也會分別帶有 **經原PR**  (7)_高與低_(高與低/低與高)特質，所以**可修個體**=1的人其**個經PR**高，有部份是因其**經原PR**也較(8)_高_(高/低)所至。
+<br><br><br>
+
+
 
 ## 1.9 (Optional, 可不寫)
 
@@ -229,6 +249,8 @@ $可修個體=1$的這群學生$經原PR$之平均數果然較高。
 Ans.
 
 數據上顯示學生的$個經PR$的確會受到同儕效果的影響，被擋修的學生在修個經時，不是和班上同學一起修的，比較難有同伴可以討論課業，導致學習成效比較不好。所以經濟系擋修制度的廢存尚有討論的空間。
+<br><br><br>
+
 
 
 # 2 理論
