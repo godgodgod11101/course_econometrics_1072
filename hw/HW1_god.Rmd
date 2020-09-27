@@ -39,6 +39,11 @@ params:
 knitr::opts_chunk$set(echo = TRUE, message = F, warning = F)
 
 ```
+<br><br><br>
+
+
+
+
 
 # 1 擋修的效果
 
@@ -49,28 +54,33 @@ knitr::opts_chunk$set(echo = TRUE, message = F, warning = F)
   * 可修習總經條件：需經原上學期**不死當**（>=40分）且下學期及格。
 
 擋修制度的用意在於讓學生於先修課程達一定基礎後，才有能力學好後面的進階課程。
+<br><br><br>
+
+
 
 ## 1.1 效應評估
 
 我們以個體經濟學為考量之進階課程，學生學習成效以**個經PR**（即學生第一次第一學期修完個經在同班的排名）來衡量。令**可修個體**虛擬變數其值為1若該學生通過修課限制可以修個經，反之為0。請寫下正確的效應結構（ 課堂上的Y即這裡的 **個經PR**，請對應課堂的$Y_{1i}-Y_{0i}$寫法，寫出這題的表示句子。)
 
-
 Ans.
 
 $$Y_{1i}-Y_{0i}=\delta_i$$
 其中$\delta_i$為「可修個體」之效果
+<br><br><br>
+
 
 
 ## 1.2 效應結構
 接續上題，課堂上的treatment dummy即為這裡的**可修個體**dummy，請寫下對應課堂效應結構$Y_i=Y_{0i}+(Y_{1i}-Y_{0i})T_i$之對應寫法（以這裡的文字符號表示）。
 
-
 Ans.
 
 $$Y_i=Y_{0i}+(Y_{1i}-Y_{0i})T_i$$
 其中$T_i=1$表示該學生的個經PR為「被擋修過之個經PR」加上「可修個體」之效果
+<br><br><br>
 
- 
+
+
 ## 1.3 簡單迴歸模型
 考慮使用如下的簡單迴歸模型來估計效應係數：
 $$個經PR_i=\beta_0+\beta_1 可修個體_i+\epsilon_i$$
@@ -90,7 +100,6 @@ hw1Data <- read_csv("https://raw.githubusercontent.com/tpemartin/github-data/mas
 
 請進行OLS估計前述的簡單迴歸模型。（注意估計式標準誤必需使用穩健標準誤robust standard error，即使用三明治及HC調整後的標準誤。）
 
-
 Ans.
 
 ```{r, include=FALSE}
@@ -104,16 +113,28 @@ library(stargazer)
 
 ```{r ans13, results='asis'}
 
-model1<- lm( (個經PR) ~ (可修個體), data = hw1Data)
-model1_coeftest<- coeftest(model1, vcov. = vcovHC, type="HC1")
+model1 <- lm(個經PR ~ 可修個體, data = hw1Data)
+model1_coeftest <- coeftest(model1, vcov. = vcovHC, type="HC1")
 
-stargazer(model1,
-          se = list(model1_coeftest[,"Std. Error"]),
-          type = "html",
-          align = TRUE
-          )
+stargazer(
+  model1,
+  se = list(model1_coeftest[,"Std. Error"]),
+  type = "html",
+  align = TRUE
+)
 
 ```
+
+**參考**
+<br>
+1.  The estimator HC0 was introduced in the econometrics literature by White (1980), 
+    building on earlier work by Eicker (1963), and is justified by asymptotic arguments.
+<br>
+2.  The estimators HC1, HC2 and HC3 were suggested by 
+    MacKinnon and White (1985) to improve the performance in small samples.
+<br><br><br>
+
+
 
 ## 1.4 選擇性偏誤
 上題的估計結果很可能不正確，請說明原因故事（非數學證明）。
